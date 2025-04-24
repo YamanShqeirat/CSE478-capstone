@@ -1,0 +1,38 @@
+#dashboard-container {
+    font-family: Arial, sans-serif;
+    margin: 20px auto;
+    max-width: 900px;
+    padding: 10px;
+  }
+  
+  h1, h2 {
+    text-align: center;
+  }
+  
+  #filters {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 20px;
+  }
+  
+  #filters label {
+    margin-right: 10px;
+    font-weight: bold;
+  }
+  
+  svg {
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    margin-bottom: 40px;
+  }
+  
+  .tooltip {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #aaa;
+    padding: 8px;
+    font-size: 14px;
+    pointer-events: none;
+    display: none;
+  }
+  
