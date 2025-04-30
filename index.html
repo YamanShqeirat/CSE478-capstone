@@ -4,39 +4,54 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Mental Health Dashboard</title>
-  <link rel="stylesheet" href="styles.scss" />
-  <script src="https://d3js.org/d3.v7.min.js"></script> <!--Import d3 js-->
+
+  <!-- Link to compiled CSS -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- D3.js -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
+
 <body>
   <div id="dashboard-container">
-    <!--Header-->
-    <h1>Mental Health Care Access Dashboard</h1>
+    
+    <!-- Header Section -->
+    <header>
+      <h1>Mental Health Care Access Dashboard</h1>
+      <p class="dashboard-subtitle">
+        Explore trends in mental health care access and service utilization.
+      </p>
+    </header>
 
-    <!--Filters-->
-    <div id="filters">
-      <label for="groupFilter">Select Group:</label>
-      <select id="groupFilter"></select>
+    <!-- Filter Controls -->
+    <section id="filters">
+      <div class="filter-group">
+        <label for="groupFilter">Demographic Group</label>
+        <select id="groupFilter"></select>
+      </div>
+      <div class="filter-group">
+        <label for="timeFilter">Time Period</label>
+        <select id="timeFilter"></select>
+      </div>
+      <div class="filter-group">
+        <label for="indicatorFilter">Mental Health Indicator</label>
+        <select id="indicatorFilter"></select>
+      </div>
+    </section>
 
-      <label for="timeFilter">Select Time Period:</label>
-      <select id="timeFilter"></select>
-
-      <label for="indicatorFilter">Select Indicator:</label>
-      <select id="indicatorFilter"></select>
-    </div>
-
-    <!--Charts-->
-    <div id="lineChartContainer">
+    <!-- Charts Section -->
+    <section id="lineChartContainer" class="chart-container">
       <h2>Service Utilization Over Time</h2>
       <svg id="lineChart" width="800" height="400"></svg>
-    </div>
+    </section>
 
-    <div id="barChartContainer">
+    <section id="barChartContainer" class="chart-container">
       <h2>Access by Demographic Subgroup</h2>
       <svg id="barChart" width="800" height="400"></svg>
-    </div>
+    </section>
+    
   </div>
 
   <script src="main.js"></script>
 </body>
 </html>
-

@@ -19,7 +19,6 @@ d3.csv("Mental_Health_Care_in_the_Last_4_Weeks.csv").then(rawData => {
             isFinite(row.Value)
         );
 
-    console.log("Cleaned Data Sample:", cleanedData.slice(0, 5));
     initDashboard(cleanedData);
 }).catch(error => {
     console.error("Error loading or cleaning data:", error);
@@ -47,9 +46,8 @@ function initDashboard(data) {
     populateFilters(data);
     renderCharts(data);
 
-    d3.select("#groupFilter").on("change", () => renderCharts(data));
-    d3.select("#timeFilter").on("change", () => renderCharts(data));
-    d3.select("#indicatorFilter").on("change", () => renderCharts(data));
+    d3.selectAll("#groupFilter, #timeFilter, #indicatorFilter")
+        .on("change", () => renderCharts(data));
 }
 
 function populateFilters(data) {
@@ -57,26 +55,20 @@ function populateFilters(data) {
     const timeOptions = Array.from(new Set(data.map(d => d.TimePeriod))).sort();
     const indicatorOptions = Array.from(new Set(data.map(d => d.Indicator))).sort();
 
-    d3.select("#groupFilter")
-        .selectAll("option")
-        .data(groupOptions)
-        .join("option")
-        .text(d => d)
-        .attr("value", d => d);
+    function populate(selector, placeholder, options) {
+        const select = d3.select(selector);
+        select.html(`<option disabled selected>${placeholder}</option>`)
+            .selectAll("option.option-item")
+            .data(options)
+            .join("option")
+            .attr("class", "option-item")
+            .attr("value", d => d)
+            .text(d => d);
+    }
 
-    d3.select("#timeFilter")
-        .selectAll("option")
-        .data(timeOptions)
-        .join("option")
-        .text(d => d)
-        .attr("value", d => d);
-
-    d3.select("#indicatorFilter")
-        .selectAll("option")
-        .data(indicatorOptions)
-        .join("option")
-        .text(d => d)
-        .attr("value", d => d);
+    populate("#groupFilter", "Select a demographic group...", groupOptions);
+    populate("#timeFilter", "Select a time period...", timeOptions);
+    populate("#indicatorFilter", "Select a mental health indicator...", indicatorOptions);
 }
 
 function renderCharts(data) {
@@ -84,23 +76,15 @@ function renderCharts(data) {
     const selectedTime = d3.select("#timeFilter").property("value");
     const selectedIndicator = d3.select("#indicatorFilter").property("value");
 
+    if (!selectedGroup || !selectedTime || !selectedIndicator) return;
+
     const lineData = data.filter(d =>
-        d.Group === selectedGroup &&
-        d.Indicator &&
-        d.Indicator.includes(selectedIndicator)
+        d.Group === selectedGroup && d.Indicator === selectedIndicator
     );
 
     const barData = data.filter(d =>
-        d.TimePeriod === selectedTime &&
-        d.Indicator &&
-        d.Indicator.includes(selectedIndicator)
+        d.TimePeriod === selectedTime && d.Indicator === selectedIndicator
     );
-
-    console.log("Selected Group:", selectedGroup);
-    console.log("Selected Time:", selectedTime);
-    console.log("Selected Indicator:", selectedIndicator);
-    console.log("Line Data Points:", lineData.length);
-    console.log("Bar Data Points:", barData.length);
 
     drawLineChart(lineData);
     drawBarChart(barData);
@@ -112,7 +96,7 @@ function drawLineChart(data) {
     const svg = d3.select("#lineChart");
     svg.selectAll("*").remove();
 
-    const margin = { top: 20, right: 20, bottom: 40, left: 60 },
+    const margin = { top: 40, right: 30, bottom: 60, left: 70 },
         width = +svg.attr("width") - margin.left - margin.right,
         height = +svg.attr("height") - margin.top - margin.bottom;
 
@@ -120,38 +104,47 @@ function drawLineChart(data) {
 
     const x = d3.scalePoint()
         .domain(data.map(d => d.TimePeriod))
-        .range([0, width]);
+        .range([0, width])
+        .padding(0.5);
 
     const y = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.Value)])
+        .domain([0, d3.max(data, d => d.Value)]).nice()
         .range([height, 0]);
 
     g.append("g")
         .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x).tickSizeOuter(0));
+        .call(d3.axisBottom(x).tickSizeOuter(0))
+        .selectAll("text")
+        .style("font-size", "12px");
 
     g.append("g")
-        .call(d3.axisLeft(y));
-
-    const line = d3.line()
-        .x(d => x(d.TimePeriod))
-        .y(d => y(d.Value));
+        .call(d3.axisLeft(y))
+        .selectAll("text")
+        .style("font-size", "12px");
 
     g.append("path")
         .datum(data)
         .attr("fill", "none")
-        .attr("stroke", "steelblue")
-        .attr("stroke-width", 2)
-        .attr("d", line);
+        .attr("stroke", "#007acc")
+        .attr("stroke-width", 3)
+        .attr("d", d3.line()
+            .x(d => x(d.TimePeriod))
+            .y(d => y(d.Value))
+        );
 
     g.selectAll(".dot")
         .data(data)
         .join("circle")
         .attr("cx", d => x(d.TimePeriod))
         .attr("cy", d => y(d.Value))
-        .attr("r", 4)
-        .attr("fill", "orange")
-        .on("mouseover", (event, d) => showTooltip(event, `Value: ${d.Value}%<br>CI: [${d.CI_Lower} - ${d.CI_Upper}]`))
+        .attr("r", 5)
+        .attr("fill", "#00a8a8")
+        .on("mouseover", (event, d) => showTooltip(event, `
+            <strong>${d.Indicator}</strong><br>
+            Time: ${d.TimePeriod}<br>
+            Value: ${d.Value}%<br>
+            Confidence Interval: [${d.CI_Lower} - ${d.CI_Upper}]
+        `))
         .on("mouseout", hideTooltip);
 }
 
@@ -161,7 +154,7 @@ function drawBarChart(data) {
     const svg = d3.select("#barChart");
     svg.selectAll("*").remove();
 
-    const margin = { top: 20, right: 20, bottom: 80, left: 60 },
+    const margin = { top: 40, right: 30, bottom: 130, left: 70 },
         width = +svg.attr("width") - margin.left - margin.right,
         height = +svg.attr("height") - margin.top - margin.bottom;
 
@@ -170,32 +163,51 @@ function drawBarChart(data) {
     const x = d3.scaleBand()
         .domain(data.map(d => d.Subgroup))
         .range([0, width])
-        .padding(0.2);
+        .padding(0.25);
 
     const y = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.Value)])
+        .domain([0, d3.max(data, d => d.Value)]).nice()
         .range([height, 0]);
 
-    g.append("g")
+    // X Axis with tooltip-enabled labels
+    const xAxis = g.append("g")
         .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x))
-        .selectAll("text")
-        .attr("transform", "rotate(-45)")
-        .style("text-anchor", "end");
+        .call(d3.axisBottom(x));
 
+    xAxis.selectAll("text")
+        .attr("transform", "rotate(-25)")
+        .style("text-anchor", "end")
+        .style("font-size", "11px")
+        .attr("dx", "-0.6em")
+        .attr("dy", "0.15em")
+        .each(function(d) {
+            const label = d3.select(this);
+            const text = label.text();
+            label.text(text.length > 20 ? text.slice(0, 17) + "…" : text); // Optional truncation
+            label.append("title").text(text); // Tooltip on hover
+        });
+
+    // Y Axis
     g.append("g")
-        .call(d3.axisLeft(y));
+        .call(d3.axisLeft(y))
+        .selectAll("text")
+        .style("font-size", "12px");
 
+    // Bars
     g.selectAll(".bar")
         .data(data)
         .join("rect")
+        .attr("class", "bar")
         .attr("x", d => x(d.Subgroup))
         .attr("y", d => y(d.Value))
         .attr("width", x.bandwidth())
         .attr("height", d => height - y(d.Value))
-        .attr("fill", "#69b3a2")
+        .attr("fill", "#3454d1")
         .on("mouseover", (event, d) =>
-            showTooltip(event, `Subgroup: ${d.Subgroup}<br>Value: ${d.Value}%`)
+            showTooltip(event, `
+                <strong>${d.Subgroup}</strong><br>
+                Value: ${d.Value}%
+            `)
         )
         .on("mouseout", hideTooltip);
 }
@@ -208,9 +220,10 @@ const tooltip = d3.select("body")
 
 function showTooltip(event, content) {
     tooltip
-        .html(content)
+        .html(`<div class="tooltip-content">${content}</div>`)
         .style("left", event.pageX + 15 + "px")
-        .style("top", event.pageY - 20 + "px")
+        .style("top", event.pageY - 30 + "px")
+        .style("opacity", 1)
         .style("display", "block");
 }
 
