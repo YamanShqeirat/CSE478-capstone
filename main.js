@@ -1,23 +1,20 @@
 // ========== Data Loading and Cleaning ==========
-
 d3.csv("Mental_Health_Care_in_the_Last_4_Weeks.csv").then(rawData => {
-    const cleanedData = rawData
-        .map(row => ({
-            Indicator: cleanString(row["Indicator"]),
-            Group: cleanString(row["Group"]),
-            Subgroup: cleanString(row["Subgroup"]),
-            TimePeriod: cleanString(row["Time Period"]),
-            Value: parseNumber(row["Value"]),
-            CI_Lower: parseNumber(row["Confidence Interval (Low Bound)"]),
-            CI_Upper: parseNumber(row["Confidence Interval (High Bound)"]),
-        }))
-        .filter(row =>
-            row.Indicator &&
-            row.Group &&
-            row.Subgroup &&
-            row.TimePeriod &&
-            isFinite(row.Value)
-        );
+    const cleanedData = rawData.map(row => ({
+        Indicator: cleanString(row["Indicator"]),
+        Group: cleanString(row["Group"]),
+        Subgroup: cleanString(row["Subgroup"]),
+        TimePeriod: cleanString(row["Time Period"]),
+        Value: parseNumber(row["Value"]),
+        CI_Lower: parseNumber(row["Confidence Interval (Low Bound)"]),
+        CI_Upper: parseNumber(row["Confidence Interval (High Bound)"]),
+    })).filter(row =>
+        row.Indicator &&
+        row.Group &&
+        row.Subgroup &&
+        row.TimePeriod &&
+        isFinite(row.Value)
+    );
 
     initDashboard(cleanedData);
 }).catch(error => {
@@ -25,7 +22,6 @@ d3.csv("Mental_Health_Care_in_the_Last_4_Weeks.csv").then(rawData => {
 });
 
 // ========== Helper Functions ==========
-
 function cleanString(str) {
     if (!str || typeof str !== "string") return null;
     return str.trim()
@@ -41,7 +37,6 @@ function parseNumber(value) {
 }
 
 // ========== Dashboard Setup ==========
-
 function initDashboard(data) {
     populateFilters(data);
     renderCharts(data);
@@ -91,14 +86,23 @@ function renderCharts(data) {
 }
 
 // ========== Line Chart ==========
-
 function drawLineChart(data) {
     const svg = d3.select("#lineChart");
     svg.selectAll("*").remove();
 
     const margin = { top: 40, right: 30, bottom: 60, left: 70 },
-        width = +svg.attr("width") - margin.left - margin.right,
-        height = +svg.attr("height") - margin.top - margin.bottom;
+          width = +svg.attr("width") - margin.left - margin.right,
+          height = +svg.attr("height") - margin.top - margin.bottom;
+
+    if (data.length === 0) {
+        svg.append("text")
+            .attr("x", width / 2 + margin.left)
+            .attr("y", height / 2 + margin.top)
+            .attr("text-anchor", "middle")
+            .style("font-size", "16px")
+            .text("No data available for this selection.");
+        return;
+    }
 
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
@@ -122,6 +126,22 @@ function drawLineChart(data) {
         .selectAll("text")
         .style("font-size", "12px");
 
+    // Axis Labels
+    svg.append("text")
+        .attr("x", margin.left + width / 2)
+        .attr("y", height + margin.top + margin.bottom - 10)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text("Time Period");
+
+    svg.append("text")
+        .attr("transform", `rotate(-90)`)
+        .attr("x", - (margin.top + height / 2))
+        .attr("y", 15)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text("Value (%)");
+
     g.append("path")
         .datum(data)
         .attr("fill", "none")
@@ -132,31 +152,41 @@ function drawLineChart(data) {
             .y(d => y(d.Value))
         );
 
-    g.selectAll(".dot")
+    g.selectAll("circle")
         .data(data)
         .join("circle")
         .attr("cx", d => x(d.TimePeriod))
         .attr("cy", d => y(d.Value))
         .attr("r", 5)
         .attr("fill", "#00a8a8")
-        .on("mouseover", (event, d) => showTooltip(event, `
-            <strong>${d.Indicator}</strong><br>
-            Time: ${d.TimePeriod}<br>
-            Value: ${d.Value}%<br>
-            Confidence Interval: [${d.CI_Lower} - ${d.CI_Upper}]
-        `))
-        .on("mouseout", hideTooltip);
+        .on("mouseover", function(event, d) {
+            d3.select(this).attr("fill", "#ff9933");
+            showTooltip(event, `Value: ${d.Value.toFixed(1)}%<br>CI: [${d.CI_Lower.toFixed(1)} - ${d.CI_Upper.toFixed(1)}]`);
+        })
+        .on("mouseout", function() {
+            d3.select(this).attr("fill", "#00a8a8");
+            hideTooltip();
+        });
 }
 
 // ========== Bar Chart ==========
-
 function drawBarChart(data) {
     const svg = d3.select("#barChart");
     svg.selectAll("*").remove();
 
     const margin = { top: 40, right: 30, bottom: 130, left: 70 },
-        width = +svg.attr("width") - margin.left - margin.right,
-        height = +svg.attr("height") - margin.top - margin.bottom;
+          width = +svg.attr("width") - margin.left - margin.right,
+          height = +svg.attr("height") - margin.top - margin.bottom;
+
+    if (data.length === 0) {
+        svg.append("text")
+            .attr("x", width / 2 + margin.left)
+            .attr("y", height / 2 + margin.top)
+            .attr("text-anchor", "middle")
+            .style("font-size", "16px")
+            .text("No data available for this selection.");
+        return;
+    }
 
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
@@ -169,13 +199,12 @@ function drawBarChart(data) {
         .domain([0, d3.max(data, d => d.Value)]).nice()
         .range([height, 0]);
 
-    // X Axis with tooltip-enabled labels
     const xAxis = g.append("g")
         .attr("transform", `translate(0,${height})`)
         .call(d3.axisBottom(x));
 
     xAxis.selectAll("text")
-        .attr("transform", "rotate(-25)")
+        .attr("transform", "rotate(-90)")
         .style("text-anchor", "end")
         .style("font-size", "11px")
         .attr("dx", "-0.6em")
@@ -183,17 +212,30 @@ function drawBarChart(data) {
         .each(function(d) {
             const label = d3.select(this);
             const text = label.text();
-            label.text(text.length > 20 ? text.slice(0, 17) + "…" : text); // Optional truncation
-            label.append("title").text(text); // Tooltip on hover
+            label.text(text.length > 20 ? text.slice(0, 17) + "…" : text);
+            label.append("title").text(text);
         });
 
-    // Y Axis
     g.append("g")
         .call(d3.axisLeft(y))
         .selectAll("text")
         .style("font-size", "12px");
 
-    // Bars
+    svg.append("text")
+        .attr("x", margin.left + width / 2)
+        .attr("y", height + margin.top + margin.bottom - 10)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text("Subgroup");
+
+    svg.append("text")
+        .attr("transform", `rotate(-90)`)
+        .attr("x", - (margin.top + height / 2))
+        .attr("y", 15)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text("Value (%)");
+
     g.selectAll(".bar")
         .data(data)
         .join("rect")
@@ -203,17 +245,17 @@ function drawBarChart(data) {
         .attr("width", x.bandwidth())
         .attr("height", d => height - y(d.Value))
         .attr("fill", "#3454d1")
-        .on("mouseover", (event, d) =>
-            showTooltip(event, `
-                <strong>${d.Subgroup}</strong><br>
-                Value: ${d.Value}%
-            `)
-        )
-        .on("mouseout", hideTooltip);
+        .on("mouseover", function(event, d) {
+            d3.select(this).attr("fill", "#ff9933");
+            showTooltip(event, `Value: ${d.Value.toFixed(1)}%<br>CI: [${d.CI_Lower.toFixed(1)} - ${d.CI_Upper.toFixed(1)}]`);
+        })
+        .on("mouseout", function() {
+            d3.select(this).attr("fill", "#3454d1");
+            hideTooltip();
+        });
 }
 
 // ========== Tooltip ==========
-
 const tooltip = d3.select("body")
     .append("div")
     .attr("class", "tooltip");
